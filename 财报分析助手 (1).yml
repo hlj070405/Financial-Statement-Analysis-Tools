@@ -1,0 +1,325 @@
+app:
+  description: 企业财报智能分析系统 - 基于AI的财务数据分析与决策支持
+  icon: 🤖
+  icon_background: '#EFF1F5'
+  mode: workflow
+  name: 财报分析助手
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/siliconflow:0.0.43@18a2f3c3559d752b178bb4efd6b736dec8dd13c2d963fd6aa5b0a350e24e6826
+    version: null
+kind: app
+version: 0.5.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .PDF
+      - .DOCX
+      - .DOC
+      - .XLS
+      - .XLSX
+      - .TXT
+      allowed_file_types:
+      - document
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: true
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: 1720794829558-source-1720795218540-target
+      source: '1720794829558'
+      sourceHandle: source
+      target: '1720795218540'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1720795218540-source-1770349332737-target
+      source: '1720795218540'
+      sourceHandle: source
+      target: '1770349332737'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: start
+        targetType: document-extractor
+      id: 1720794829558-source-1770349598726-target
+      source: '1720794829558'
+      sourceHandle: source
+      target: '1770349598726'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: document-extractor
+        targetType: llm
+      id: 1770349598726-source-1720795218540-target
+      source: '1770349598726'
+      sourceHandle: source
+      target: '1720795218540'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: input
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: input
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          default: ''
+          hint: ''
+          label: files
+          options: []
+          placeholder: ''
+          required: false
+          type: file
+          variable: files
+        - default: 专业分析
+          hint: ''
+          label: 分析风格
+          options:
+          - 专业分析
+          - 简单分析(不含专业术语)
+          placeholder: ''
+          required: true
+          type: select
+          variable: style
+      height: 160
+      id: '1720794829558'
+      position:
+        x: -12.9683279579574
+        y: 299.0379524808675
+      positionAbsolute:
+        x: -12.9683279579574
+        y: 299.0379524808675
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1770349598726'
+          - text
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: Pro/moonshotai/Kimi-K2.5
+          provider: langgenius/siliconflow/siliconflow
+        prompt_template:
+        - id: 86a69d9b-93ca-4abb-8dd5-b4d06e9027fe
+          role: system
+          text: '你是一个专业的财务分析意图识别系统。你会根据用户的问题判断其分析需求。
+
+            分析维度：
+
+            1. 财务指标分析：ROE、ROA、资产负债率、流动比率等
+
+            2. 盈利能力评估：营收增长、净利润率、毛利率等
+
+            3. 风险识别：债务风险、现金流风险、经营风险等
+
+            4. 行业对比：与同行业企业的对标分析
+
+
+            示例输出(仅为示例,按照用户实际情况)：
+
+            ```
+
+            系统：根据您的输入，您想分析该公司的盈利能力。我将从以下方面进行分析：
+
+            1. 营业收入及增长趋势
+
+            2. 净利润率和毛利率水平
+
+            3. 与行业平均水平的对比
+
+            4. 盈利质量和可持续性评估
+
+            ```'
+        - id: 7cc493a4-a5ac-450d-bcb7-b4c87e328fb9
+          role: user
+          text: '{{#1720794829558.input#}}{{#context#}}{{#1720794829558.style#}}'
+        selected: false
+        title: LLM 2
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 87
+      id: '1720795218540'
+      position:
+        x: 621.7402667871219
+        y: 252.16017785808123
+      positionAbsolute:
+        x: 621.7402667871219
+        y: 252.16017785808123
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        author: winson
+        desc: ''
+        height: 196
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"模版化用户的问题，并交由llm理解并判断是否属于dify
+          相关的问题。属于，对问题进行主题分类；否，进行模版回复","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1,"textFormat":0}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: ''
+        type: ''
+        width: 242
+      height: 196
+      id: '1720839351323'
+      position:
+        x: 328.2857142857142
+        y: 348
+      positionAbsolute:
+        x: 328.2857142857142
+        y: 348
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 242
+    - data:
+        author: winson
+        desc: ''
+        height: 88
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"对问题进行适当的分类","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1,"textFormat":0}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: ''
+        type: ''
+        width: 240
+      height: 88
+      id: '1720839594576'
+      position:
+        x: 1244
+        y: 718.5714285714287
+      positionAbsolute:
+        x: 1244
+        y: 718.5714285714287
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 240
+    - data:
+        outputs:
+        - value_selector:
+          - '1720795218540'
+          - text
+          value_type: string
+          variable: text
+        selected: false
+        title: 输出 6
+        type: end
+      height: 88
+      id: '1770349332737'
+      position:
+        x: 894.8690349625584
+        y: 252.16017785808123
+      positionAbsolute:
+        x: 894.8690349625584
+        y: 252.16017785808123
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        is_array_file: false
+        selected: false
+        title: 文档提取器
+        type: document-extractor
+        variable_selector:
+        - '1720794829558'
+        - files
+      height: 104
+      id: '1770349598726'
+      position:
+        x: 328.8006074444272
+        y: 134.95254994633257
+      positionAbsolute:
+        x: 328.8006074444272
+        y: 134.95254994633257
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: -52.210126962516824
+      y: 26.15022568208221
+      zoom: 0.6410374807679006
+  rag_pipeline_variables: []
