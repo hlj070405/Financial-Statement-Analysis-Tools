@@ -1,13 +1,26 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import httpx
 import os
-from typing import Optional
+from typing import Optional, List
 import json
 from dotenv import load_dotenv
 import re
+from sqlalchemy.orm import Session
+from datetime import timedelta
+
+from database import get_db, init_db, User
+from auth import (
+    get_password_hash,
+    authenticate_user,
+    create_access_token,
+    get_current_user,
+    ACCESS_TOKEN_EXPIRE_MINUTES
+)
+from schemas import UserCreate, UserLogin, UserResponse, Token
+from file_upload import upload_file_to_dify
 
 # 加载 .env 文件
 load_dotenv()
@@ -21,6 +34,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+    print("[启动] 数据库初始化完成")
 
 DIFY_API_URL = os.getenv("DIFY_API_URL", "http://localhost/v1")
 DIFY_API_KEY = os.getenv("DIFY_API_KEY", "")
@@ -210,42 +228,180 @@ async def analyze_document(request: AnalysisRequest):
         }
     )
 
+class ChatRequest(BaseModel):
+    message: str
+    conversation_id: Optional[str] = None
+    files: Optional[list] = None
+    style: Optional[str] = "专业分析"
+
 @app.post("/api/chat")
-async def chat_with_document(file_id: str, message: str, conversation_id: Optional[str] = None):
-    """与文档进行多轮对话"""
-    try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            headers = {
-                'Authorization': f'Bearer {DIFY_API_KEY}',
-                'Content-Type': 'application/json'
-            }
-            
-            payload = {
-                "inputs": {
-                    "file": file_id
-                },
-                "query": message,
-                "response_mode": "streaming",
-                "user": "default-user"
-            }
-            
-            if conversation_id:
-                payload["conversation_id"] = conversation_id
-            
-            response = await client.post(
-                f"{DIFY_API_URL}/chat-messages",
-                headers=headers,
-                json=payload
-            )
-            
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code,
-                                  detail=f"对话失败: {response.text}")
-            
-            return response.json()
+async def chat_with_ai(request: ChatRequest, current_user: User = Depends(get_current_user)):
+    """智能对话接口 - 支持财务分析、舆情追踪等 (Dify Workflow模式 - 流式响应)"""
     
+    async def generate_stream():
+        try:
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                headers = {
+                    'Authorization': f'Bearer {DIFY_API_KEY}',
+                    'Content-Type': 'application/json'
+                }
+                
+                # Dify Workflow API 使用 /workflows/run 端点
+                payload = {
+                    "inputs": {
+                        "input": request.message,
+                        "style": request.style or "专业分析"
+                    },
+                    "response_mode": "streaming",
+                    "user": current_user.username
+                }
+                
+                # 如果有文件,添加到inputs中
+                if request.files and len(request.files) > 0:
+                    file = request.files[0]
+                    file_obj = {
+                        "type": file.get("type", "document"),
+                        "transfer_method": "local_file",
+                        "upload_file_id": file.get("id")
+                    }
+                    payload["inputs"]["files"] = file_obj
+                
+                # 发送流式请求
+                async with client.stream(
+                    'POST',
+                    f"{DIFY_API_URL}/workflows/run",
+                    headers=headers,
+                    json=payload
+                ) as response:
+                    if response.status_code != 200:
+                        error_detail = await response.aread()
+                        yield f"data: {json.dumps({'error': f'Dify工作流执行失败: {error_detail.decode()}'})}\n\n"
+                        return
+                    
+                    # 逐行读取SSE流
+                    async for line in response.aiter_lines():
+                        if line.startswith('data: '):
+                            data_str = line[6:]  # 去掉 'data: ' 前缀
+                            
+                            if data_str.strip():
+                                try:
+                                    data = json.loads(data_str)
+                                    event = data.get('event')
+                                    
+                                    # 处理不同的事件类型
+                                    if event == 'workflow_started':
+                                        yield f"data: {json.dumps({'type': 'start', 'data': data})}\n\n"
+                                    
+                                    elif event == 'node_started':
+                                        yield f"data: {json.dumps({'type': 'node_start', 'data': data})}\n\n"
+                                    
+                                    elif event == 'node_finished':
+                                        yield f"data: {json.dumps({'type': 'node_finish', 'data': data})}\n\n"
+                                    
+                                    elif event == 'text_chunk':
+                                        # 文本块 - 逐字输出
+                                        text = data.get('data', {}).get('text', '')
+                                        yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
+                                    
+                                    elif event == 'workflow_finished':
+                                        # 工作流完成
+                                        yield f"data: {json.dumps({'type': 'finish', 'data': data})}\n\n"
+                                        yield "data: [DONE]\n\n"
+                                    
+                                    elif event == 'error':
+                                        yield f"data: {json.dumps({'type': 'error', 'error': data.get('message', '未知错误')})}\n\n"
+                                        
+                                except json.JSONDecodeError:
+                                    continue
+        
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+@app.post("/api/upload-file")
+async def upload_file(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    """上传文件到Dify"""
+    try:
+        result = await upload_file_to_dify(
+            file=file,
+            dify_api_url=DIFY_API_URL,
+            dify_api_key=DIFY_API_KEY,
+            user=current_user.username
+        )
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"对话失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"文件上传失败: {str(e)}")
+
+@app.post("/api/auth/register", response_model=Token)
+async def register(user: UserCreate, db: Session = Depends(get_db)):
+    """用户注册"""
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="用户名已存在")
+    
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="邮箱已被注册")
+    
+    hashed_password = get_password_hash(user.password)
+    new_user = User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password,
+        full_name=user.full_name
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": new_user.username}, expires_delta=access_token_expires
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": new_user
+    }
+
+@app.post("/api/auth/login", response_model=Token)
+async def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
+    """用户登录"""
+    user = authenticate_user(db, user_credentials.username, user_credentials.password)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="用户名或密码错误",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user
+    }
+
+@app.get("/api/auth/me", response_model=UserResponse)
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """获取当前用户信息"""
+    return current_user
 
 @app.get("/health")
 async def health_check():

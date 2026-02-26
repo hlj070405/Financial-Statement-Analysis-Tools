@@ -1,6 +1,6 @@
 <template>
-  <div class="bg-white rounded-lg shadow-md p-6">
-    <h2 class="text-2xl font-semibold mb-4">📄 上传财报文档</h2>
+  <div class="glass-panel p-6">
+    <h2 class="text-2xl font-semibold mb-4 text-gray-800">📄 上传财报文档</h2>
     
     <!-- 上传区域 -->
     <div 
@@ -9,14 +9,14 @@
       @dragleave.prevent="isDragging = false"
       @drop.prevent="handleDrop"
       :class="[
-        'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition',
-        isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-500'
+        'border-2 border-dashed rounded-[var(--glass-radius)] p-8 text-center cursor-pointer transition',
+        isDragging ? 'border-blue-500 bg-blue-50/50' : 'border-gray-300 hover:border-blue-500 bg-white/30'
       ]"
     >
-      <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+      <svg class="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48">
         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
-      <p class="mt-2 text-sm text-gray-600">点击或拖拽 PDF 文件到此处</p>
+      <p class="mt-2 text-sm text-gray-700">点击或拖拽 PDF 文件到此处</p>
       <input 
         ref="fileInputRef" 
         type="file" 
@@ -28,7 +28,7 @@
 
     <!-- 文件信息 -->
     <div v-if="uploadedFile" class="mt-4">
-      <div class="bg-blue-50 border border-blue-200 rounded p-3">
+      <div class="bg-blue-50/50 border border-blue-200/50 rounded-[var(--glass-radius)] p-3">
         <p class="text-sm font-medium text-blue-800">{{ uploadedFile.name }}</p>
         <p class="text-xs text-blue-600 mt-1">{{ formatFileSize(uploadedFile.size) }}</p>
       </div>
@@ -40,7 +40,7 @@
         <span>上传中...</span>
         <span>{{ uploadProgress }}%</span>
       </div>
-      <div class="w-full bg-gray-200 rounded-full h-2">
+      <div class="w-full bg-gray-200/50 rounded-full h-2">
         <div 
           class="bg-blue-600 h-2 rounded-full transition-all"
           :style="{ width: uploadProgress + '%' }"
@@ -54,7 +54,7 @@
       <textarea 
         v-model="question"
         rows="4" 
-        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+        class="glass-input"
         placeholder="例如：分析该公司的盈利能力和财务风险"
       ></textarea>
     </div>
@@ -63,26 +63,29 @@
       <label class="block text-sm font-medium text-gray-700 mb-2">分析风格</label>
       <select 
         v-model="style"
-        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+        class="glass-input"
       >
         <option value="专业分析">专业分析</option>
         <option value="简单分析(不含专业术语)">简单分析(不含专业术语)</option>
       </select>
     </div>
 
-    <button 
-      @click="handleAnalyze"
-      :disabled="!fileId || isAnalyzing"
-      class="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-    >
-      {{ isAnalyzing ? '分析中...' : '开始分析' }}
-    </button>
+    <div class="mt-6 w-full flex justify-center">
+      <GlassButton 
+        class="w-full"
+        @click="handleAnalyze"
+        :disabled="!fileId || isAnalyzing"
+      >
+        {{ isAnalyzing ? '分析中...' : '开始分析' }}
+      </GlassButton>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { uploadPDF } from '../api/analysis'
+import GlassButton from './GlassButton.vue'
 
 const emit = defineEmits(['file-uploaded', 'analyze'])
 const props = defineProps({

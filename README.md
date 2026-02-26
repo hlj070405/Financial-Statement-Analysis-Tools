@@ -1,32 +1,23 @@
-# 📊 企业财报智能分析系统
+# PDF RAG 智能分析系统
 
-基于 Dify + Vue 3 的企业财报智能分析与决策支持系统
+基于 Dify 的企业财报智能分析与决策支持系统
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Vue](https://img.shields.io/badge/Vue-3.4-green.svg)](https://vuejs.org/)
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
-[![Dify](https://img.shields.io/badge/Dify-Powered-orange.svg)](https://dify.ai/)
+## 功能特性
 
-## ✨ 功能特性
+- ✅ PDF 文件上传（支持拖拽）
+- ✅ 自动文档切分和向量化
+- ✅ RAG 智能问答
+- ✅ 多轮对话支持
+- ✅ 动态图表生成
+- ✅ 引用来源追溯
 
-- 🚀 **实时流式输出** - AI 分析结果边生成边显示，无需等待
-- 📄 **PDF 智能解析** - 支持拖拽上传，自动提取财报内容
-- 🤖 **RAG 智能问答** - 基于文档内容的精准分析
-- 📝 **Markdown 渲染** - 专业的格式化输出，支持表格、列表、代码块
-- 🎨 **现代化 UI** - Vue 3 + TailwindCSS，响应式设计
-- 🔄 **Thinking 过滤** - 自动过滤 AI 思考过程，只显示最终结果
-- 📊 **数据可视化** - ECharts 图表支持（可扩展）
-
-## 🏗️ 系统架构
+## 系统架构
 
 ```
-前端 (Vue 3 + Vite + TailwindCSS)
-    ↓ SSE 流式通信
-FastAPI 后端 (Python)
-    ↓ API 调用
-Dify 工作流引擎
+前端 (HTML + TailwindCSS + ECharts)
     ↓
-LLM (Kimi-K2.5 / 其他模型)
+FastAPI 后端
+    ↓
 Dify API (工作流 + 知识库)
     ↓
 LLM (GPT-4 / Claude / 国产大模型)
@@ -130,9 +121,8 @@ copy .env.example .env
 ```
 
 `.env` 文件内容：
-```env
+```
 DIFY_API_URL=http://localhost/v1
-DIFY_API_KEY=your-dify-api-key-here
 DIFY_API_KEY=app-你的API密钥
 ```
 
@@ -143,22 +133,11 @@ DIFY_API_KEY=app-你的API密钥
 python main.py
 ```
 
-### 4. 启动 Vue 前端（推荐）
+### 5. 访问前端
 
-```bash
-cd frontend-vue
+用浏览器打开 `frontend/index.html`
 
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-```
-
-访问 http://localhost:3000
-
-### 5. 或使用原版前端
-
+或使用简单的 HTTP 服务器：
 ```bash
 cd frontend
 python -m http.server 3000
