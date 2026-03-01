@@ -1,69 +1,113 @@
 <template>
-  <div class="h-full flex flex-col gap-4">
-    <div class="grid grid-cols-4 gap-4">
-      <div v-for="metric in metrics" :key="metric.title" class="glass-panel p-4">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm text-gray-600">{{ metric.title }}</span>
-          <div :class="['w-8 h-8 rounded-lg flex items-center justify-center', metric.bgColor]">
-            <component :is="metric.icon" class="w-4 h-4 text-white" />
+  <div class="h-full flex flex-col gap-6 p-2 font-sans overflow-hidden">
+    <!-- Header Section -->
+    <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm shrink-0 flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-bold text-gray-900 flex items-center gap-3">
+          <div class="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+            <BarChart3 class="w-6 h-6" />
+          </div>
+          幻诊·全景运营评估
+        </h2>
+        <p class="text-sm text-gray-500 mt-1.5 ml-1">透视真相的"心" — 企业财务健康度全景分析</p>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <div class="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100">
+           <button 
+             v-for="period in ['近7天', '近30天', '本季度', '本年度']" 
+             :key="period"
+             class="px-3 py-1.5 text-xs font-medium rounded-lg transition-all hover:text-gray-900 text-gray-500 hover:bg-white hover:shadow-sm relative group overflow-hidden"
+           >
+             <div class="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+             {{ period }}
+           </button>
+        </div>
+        <button class="p-2.5 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-gray-600 transition-colors border border-transparent hover:border-gray-100 relative group overflow-hidden">
+          <div class="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <Download class="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="grid grid-cols-4 gap-6 shrink-0">
+      <div v-for="metric in metrics" :key="metric.title" class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-sm font-medium text-gray-500">{{ metric.title }}</span>
+          <div :class="cn('w-8 h-8 rounded-lg flex items-center justify-center transition-colors', metric.bgClass, metric.textClass)">
+            <component :is="metric.icon" class="w-4 h-4" />
           </div>
         </div>
-        <div class="text-2xl font-bold text-gray-800">{{ metric.value }}</div>
-        <div class="flex items-center mt-2 text-xs">
-          <span :class="metric.trend === 'up' ? 'text-green-600' : 'text-red-600'" class="flex items-center">
-            <svg v-if="metric.trend === 'up'" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-            </svg>
-            <svg v-else class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-            </svg>
-            {{ metric.change }}
-          </span>
-          <span class="text-gray-500 ml-2">vs 去年同期</span>
+        <div class="flex items-baseline justify-between">
+          <div class="text-2xl font-bold text-gray-900">{{ metric.value }}</div>
+          <div class="flex items-center text-xs font-medium bg-gray-50 px-2 py-1 rounded-full">
+            <component 
+              :is="metric.trend === 'up' ? TrendingUp : TrendingDown" 
+              :class="cn('w-3 h-3 mr-1', metric.trend === 'up' ? 'text-emerald-500' : 'text-rose-500')" 
+            />
+            <span :class="metric.trend === 'up' ? 'text-emerald-600' : 'text-rose-600'">{{ metric.change }}</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-2 gap-4 flex-1">
-      <div class="glass-panel p-4 flex flex-col">
-        <h3 class="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-          <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
-          </svg>
-          营收与利润趋势
-        </h3>
-        <div ref="revenueChart" class="flex-1"></div>
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-2 gap-6 flex-1 min-h-0">
+      <!-- Revenue Chart -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex flex-col min-h-0">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+            <LineChart class="w-4 h-4 text-blue-500" />
+            营收与利润趋势
+          </h3>
+          <button class="text-gray-400 hover:text-gray-600">
+            <MoreHorizontal class="w-4 h-4" />
+          </button>
+        </div>
+        <div ref="revenueChart" class="flex-1 w-full min-h-[200px]"></div>
       </div>
 
-      <div class="glass-panel p-4 flex flex-col">
-        <h3 class="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-          <svg class="w-4 h-4 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
-          </svg>
-          业务结构分析
-        </h3>
-        <div ref="pieChart" class="flex-1"></div>
+      <!-- Pie Chart -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex flex-col min-h-0">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+            <PieChartIcon class="w-4 h-4 text-violet-500" />
+            业务结构分析
+          </h3>
+          <button class="text-gray-400 hover:text-gray-600">
+            <MoreHorizontal class="w-4 h-4" />
+          </button>
+        </div>
+        <div ref="pieChart" class="flex-1 w-full min-h-[200px]"></div>
       </div>
 
-      <div class="glass-panel p-4 flex flex-col">
-        <h3 class="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-          <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-          </svg>
-          财务指标对比
-        </h3>
-        <div ref="barChart" class="flex-1"></div>
+      <!-- Bar Chart -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex flex-col min-h-0">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+            <BarChart2 class="w-4 h-4 text-emerald-500" />
+            核心指标对标
+          </h3>
+          <button class="text-gray-400 hover:text-gray-600">
+            <MoreHorizontal class="w-4 h-4" />
+          </button>
+        </div>
+        <div ref="barChart" class="flex-1 w-full min-h-[200px]"></div>
       </div>
 
-      <div class="glass-panel p-4 flex flex-col">
-        <h3 class="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-          <svg class="w-4 h-4 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-          </svg>
-          风险评估雷达图
-        </h3>
-        <div ref="radarChart" class="flex-1"></div>
+      <!-- Radar Chart -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex flex-col min-h-0">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+            <Radar class="w-4 h-4 text-orange-500" />
+            综合风险评估
+          </h3>
+          <button class="text-gray-400 hover:text-gray-600">
+            <MoreHorizontal class="w-4 h-4" />
+          </button>
+        </div>
+        <div ref="radarChart" class="flex-1 w-full min-h-[200px]"></div>
       </div>
     </div>
   </div>
@@ -72,6 +116,25 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import * as echarts from 'echarts'
+import { clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+import { 
+  BarChart3, 
+  Download, 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  Wallet, 
+  Percent, 
+  Scale,
+  LineChart,
+  PieChart as PieChartIcon,
+  BarChart2,
+  Radar,
+  MoreHorizontal
+} from 'lucide-vue-next'
+
+const cn = (...inputs) => twMerge(clsx(inputs))
 
 const revenueChart = ref(null)
 const pieChart = ref(null)
@@ -80,60 +143,40 @@ const radarChart = ref(null)
 
 const metrics = ref([
   {
-    title: '总营收',
+    title: '总营收 (TTM)',
     value: '¥602.3亿',
     change: '+23.5%',
     trend: 'up',
-    bgColor: 'bg-blue-500',
-    icon: {
-      template: `
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      `
-    }
+    icon: DollarSign,
+    bgClass: 'bg-blue-50',
+    textClass: 'text-blue-600'
   },
   {
-    title: '净利润',
+    title: '净利润 (TTM)',
     value: '¥166.2亿',
     change: '+81.4%',
     trend: 'up',
-    bgColor: 'bg-green-500',
-    icon: {
-      template: `
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-        </svg>
-      `
-    }
+    icon: Wallet,
+    bgClass: 'bg-emerald-50',
+    textClass: 'text-emerald-600'
   },
   {
-    title: 'ROE',
+    title: '净资产收益率 (ROE)',
     value: '27.6%',
     change: '+5.2%',
     trend: 'up',
-    bgColor: 'bg-purple-500',
-    icon: {
-      template: `
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-        </svg>
-      `
-    }
+    icon: Percent,
+    bgClass: 'bg-violet-50',
+    textClass: 'text-violet-600'
   },
   {
     title: '资产负债率',
     value: '58.3%',
     change: '-2.1%',
-    trend: 'down',
-    bgColor: 'bg-orange-500',
-    icon: {
-      template: `
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
-        </svg>
-      `
-    }
+    trend: 'down', // down is good for liabilities usually, but visual indicator shows direction
+    icon: Scale,
+    bgClass: 'bg-orange-50',
+    textClass: 'text-orange-600'
   }
 ])
 
@@ -149,33 +192,38 @@ const initRevenueChart = () => {
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      borderColor: '#e5e7eb',
-      textStyle: { color: '#374151' }
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#f3f4f6',
+      borderWidth: 1,
+      textStyle: { color: '#1f2937', fontSize: 12 },
+      extraCssText: 'box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-radius: 8px;'
     },
     legend: {
       data: ['营收', '净利润'],
       bottom: 0,
-      textStyle: { fontSize: 11 }
+      icon: 'circle',
+      textStyle: { fontSize: 12, color: '#6b7280' }
     },
     grid: {
-      left: '3%',
+      left: '2%',
       right: '4%',
-      bottom: '12%',
+      bottom: '10%',
       top: '5%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
       data: ['2019', '2020', '2021', '2022', '2023'],
-      axisLine: { lineStyle: { color: '#e5e7eb' } },
-      axisLabel: { color: '#6b7280', fontSize: 11 }
+      axisLine: { lineStyle: { color: '#f3f4f6' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#9ca3af', fontSize: 11, margin: 12 }
     },
     yAxis: {
       type: 'value',
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: '#f3f4f6' } },
-      axisLabel: { color: '#6b7280', fontSize: 11 }
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } },
+      axisLabel: { color: '#9ca3af', fontSize: 11 }
     },
     series: [
       {
@@ -183,12 +231,12 @@ const initRevenueChart = () => {
         type: 'line',
         data: [277, 156, 216, 424, 602],
         smooth: true,
+        symbol: 'none',
         lineStyle: { width: 3, color: '#3b82f6' },
-        itemStyle: { color: '#3b82f6' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
-            { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+            { offset: 0, color: 'rgba(59, 130, 246, 0.15)' },
+            { offset: 1, color: 'rgba(59, 130, 246, 0.0)' }
           ])
         }
       },
@@ -197,12 +245,12 @@ const initRevenueChart = () => {
         type: 'line',
         data: [16, 42, 30, 92, 166],
         smooth: true,
+        symbol: 'none',
         lineStyle: { width: 3, color: '#10b981' },
-        itemStyle: { color: '#10b981' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
-            { offset: 1, color: 'rgba(16, 185, 129, 0.05)' }
+            { offset: 0, color: 'rgba(16, 185, 129, 0.15)' },
+            { offset: 1, color: 'rgba(16, 185, 129, 0.0)' }
           ])
         }
       }
@@ -217,36 +265,41 @@ const initPieChart = () => {
   const option = {
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      borderColor: '#e5e7eb',
-      textStyle: { color: '#374151' }
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#f3f4f6',
+      borderWidth: 1,
+      textStyle: { color: '#1f2937', fontSize: 12 },
+      extraCssText: 'box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-radius: 8px;'
     },
     legend: {
       orient: 'vertical',
-      right: '5%',
+      right: '0%',
       top: 'center',
-      textStyle: { fontSize: 11 }
+      icon: 'circle',
+      textStyle: { fontSize: 12, color: '#6b7280' },
+      itemGap: 16
     },
     series: [
       {
         type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['35%', '50%'],
+        radius: ['50%', '80%'],
+        center: ['30%', '50%'],
         avoidLabelOverlap: false,
         itemStyle: {
-          borderRadius: 8,
+          borderRadius: 6,
           borderColor: '#fff',
           borderWidth: 2
         },
-        label: {
-          show: false
-        },
+        label: { show: false },
         emphasis: {
           label: {
             show: true,
-            fontSize: 14,
-            fontWeight: 'bold'
-          }
+            fontSize: 16,
+            fontWeight: 'bold',
+            color: '#1f2937'
+          },
+          scale: true,
+          scaleSize: 10
         },
         data: [
           { value: 335, name: '新能源汽车', itemStyle: { color: '#3b82f6' } },
@@ -267,50 +320,58 @@ const initBarChart = () => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      borderColor: '#e5e7eb',
-      textStyle: { color: '#374151' }
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#f3f4f6',
+      borderWidth: 1,
+      textStyle: { color: '#1f2937', fontSize: 12 },
+      extraCssText: 'box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-radius: 8px;'
     },
     legend: {
       data: ['比亚迪', '特斯拉', '宁德时代'],
       bottom: 0,
-      textStyle: { fontSize: 11 }
+      icon: 'circle',
+      textStyle: { fontSize: 12, color: '#6b7280' }
     },
     grid: {
-      left: '3%',
+      left: '2%',
       right: '4%',
-      bottom: '12%',
+      bottom: '10%',
       top: '5%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
       data: ['ROE', '毛利率', '净利率', '资产周转率'],
-      axisLine: { lineStyle: { color: '#e5e7eb' } },
-      axisLabel: { color: '#6b7280', fontSize: 11 }
+      axisLine: { lineStyle: { color: '#f3f4f6' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#9ca3af', fontSize: 11, margin: 12 }
     },
     yAxis: {
       type: 'value',
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: '#f3f4f6' } },
-      axisLabel: { color: '#6b7280', fontSize: 11 }
+      splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } },
+      axisLabel: { color: '#9ca3af', fontSize: 11 }
     },
     series: [
       {
         name: '比亚迪',
         type: 'bar',
+        barGap: '20%',
+        barWidth: 12,
         data: [27.6, 21.9, 27.6, 1.42],
         itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] }
       },
       {
         name: '特斯拉',
         type: 'bar',
+        barWidth: 12,
         data: [23.1, 25.6, 15.5, 0.89],
         itemStyle: { color: '#8b5cf6', borderRadius: [4, 4, 0, 0] }
       },
       {
         name: '宁德时代',
         type: 'bar',
+        barWidth: 12,
         data: [19.8, 22.4, 16.8, 1.12],
         itemStyle: { color: '#10b981', borderRadius: [4, 4, 0, 0] }
       }
@@ -324,14 +385,17 @@ const initRadarChart = () => {
   const chart = echarts.init(radarChart.value)
   const option = {
     tooltip: {
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      borderColor: '#e5e7eb',
-      textStyle: { color: '#374151' }
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#f3f4f6',
+      borderWidth: 1,
+      textStyle: { color: '#1f2937', fontSize: 12 },
+      extraCssText: 'box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-radius: 8px;'
     },
     legend: {
       data: ['当前评分', '行业平均'],
       bottom: 0,
-      textStyle: { fontSize: 11 }
+      icon: 'circle',
+      textStyle: { fontSize: 12, color: '#6b7280' }
     },
     radar: {
       indicator: [
@@ -341,13 +405,20 @@ const initRadarChart = () => {
         { name: '成长能力', max: 100 },
         { name: '市场地位', max: 100 }
       ],
+      radius: '65%',
+      center: ['50%', '50%'],
       splitArea: {
+        show: true,
         areaStyle: {
-          color: ['rgba(59, 130, 246, 0.05)', 'rgba(139, 92, 246, 0.05)']
+          color: ['#f9fafb', '#ffffff']
         }
       },
       axisLine: { lineStyle: { color: '#e5e7eb' } },
-      splitLine: { lineStyle: { color: '#e5e7eb' } }
+      splitLine: { lineStyle: { color: '#e5e7eb' } },
+      axisName: {
+        color: '#6b7280',
+        fontSize: 11
+      }
     },
     series: [
       {
@@ -356,16 +427,19 @@ const initRadarChart = () => {
           {
             value: [85, 72, 88, 92, 78],
             name: '当前评分',
-            areaStyle: { color: 'rgba(59, 130, 246, 0.3)' },
+            areaStyle: { color: 'rgba(59, 130, 246, 0.2)' },
             lineStyle: { color: '#3b82f6', width: 2 },
-            itemStyle: { color: '#3b82f6' }
+            itemStyle: { color: '#3b82f6' },
+            symbol: 'circle',
+            symbolSize: 6
           },
           {
             value: [70, 65, 75, 68, 72],
             name: '行业平均',
-            areaStyle: { color: 'rgba(139, 92, 246, 0.2)' },
-            lineStyle: { color: '#8b5cf6', width: 2 },
-            itemStyle: { color: '#8b5cf6' }
+            areaStyle: { color: 'rgba(139, 92, 246, 0.1)' },
+            lineStyle: { color: '#8b5cf6', width: 2, type: 'dashed' },
+            itemStyle: { color: '#8b5cf6' },
+            symbol: 'none'
           }
         ]
       }

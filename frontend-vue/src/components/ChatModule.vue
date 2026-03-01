@@ -1,215 +1,236 @@
 <template>
-  <div class="h-full flex gap-4">
-    <div class="flex-1 flex flex-col glass-panel">
-      <div class="p-4 border-b border-gray-200/50">
-        <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-          <svg class="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-          </svg>
-          幻思·智能企业咨询
-        </h2>
-        <p class="text-sm text-gray-500 mt-1">基于多源数据的智能财务分析对话</p>
-      </div>
-
-      <div ref="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
-        <div v-if="messages.length === 0" class="h-full flex items-center justify-center">
-          <div class="text-center max-w-2xl">
-            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-              <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">开始您的智能分析之旅</h3>
-            <p class="text-gray-600 mb-6">我可以帮您分析企业财报、评估经营风险、追踪市场舆情</p>
-            
-            <div class="grid grid-cols-2 gap-3 text-left">
-              <button 
-                v-for="example in exampleQuestions" 
-                :key="example"
-                @click="sendMessage(example)"
-                class="p-3 bg-white/50 hover:bg-white/80 border border-gray-200 rounded-lg text-sm text-gray-700 transition"
-              >
-                {{ example }}
-              </button>
-            </div>
+  <div class="h-full flex bg-gray-50/50 font-sans">
+    <!-- 中间主对话区 (Left) -->
+    <div class="flex-1 flex flex-col relative min-w-0 bg-white">
+      <!-- 顶部导航 -->
+      <header class="h-16 border-b border-gray-100 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+        <div class="flex items-center gap-2">
+           <span class="text-gray-500 text-sm flex items-center gap-2">
+             <Bot class="w-4 h-4" />
+             幻思·智能咨询
+           </span>
+           <span class="text-gray-300">/</span>
+           <span class="text-gray-900 font-medium text-sm">{{ currentConversationId ? '当前会话' : '新会话' }}</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center bg-gray-100 rounded-lg p-1">
+             <button 
+               v-for="style in ['专业', '简洁']" 
+               :key="style"
+               @click="analysisStyle = style === '专业' ? '专业分析' : '简单分析(不含专业术语)'"
+               :class="cn(
+                 'px-3 py-1.5 text-xs font-medium rounded-md transition-all relative group overflow-hidden',
+                 (style === '专业' && analysisStyle === '专业分析') || (style === '简洁' && analysisStyle !== '专业分析')
+                   ? 'bg-white text-gray-900 shadow-sm'
+                   : 'text-gray-500 hover:text-gray-700'
+               )"
+             >
+               <div class="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+               {{ style }}
+             </button>
           </div>
         </div>
+      </header>
 
-        <!-- 系统提示消息 -->
-        <div v-for="(message, index) in messages" :key="index">
-          <div v-if="message.role === 'system'" class="flex justify-center my-2">
-            <span class="text-xs text-gray-400">{{ message.content }}</span>
-          </div>
-          
-          <!-- 普通消息 -->
-          <div v-else class="flex" :class="message.role === 'user' ? 'justify-end' : 'justify-start'">
-            <div :class="[
-              'max-w-[80%] rounded-lg',
-              message.role === 'user' 
-                ? 'bg-gradient-to-br from-blue-500 to-purple-500 text-white p-4' 
-                : 'bg-white border border-gray-200'
-            ]">
-              <div v-if="message.role === 'assistant'" class="flex items-start space-x-3 p-4">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <!-- AI分析提示 -->
-                  <div v-if="!message.content && message.isLoading" class="flex items-center space-x-2">
-                    <div class="flex space-x-1">
-                      <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style="animation-delay: 0s"></div>
-                      <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                      <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
-                    </div>
-                    <span class="text-xs text-gray-500">AI正在分析中...</span>
-                  </div>
-                  <div v-else class="text-sm text-gray-800" v-html="formatMessage(message.content)"></div>
-                
-                  <div v-if="message.thinking" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div class="flex items-center text-xs text-blue-700 mb-2">
-                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                      </svg>
-                      <span class="font-medium">思维链推理</span>
-                    </div>
-                    <div class="text-xs text-gray-700">{{ message.thinking }}</div>
-                  </div>
-
-                  <div v-if="message.sources && message.sources.length > 0" class="mt-3 space-y-2">
-                    <div class="text-xs text-gray-500 font-medium">数据来源</div>
-                    <div class="flex flex-wrap gap-2">
-                      <button 
-                        v-for="(source, idx) in message.sources" 
-                        :key="idx"
-                        class="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded border border-purple-200 hover:bg-purple-100 transition"
-                      >
-                        {{ source }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="text-sm">
-                {{ message.content }}
-              </div>
+      <!-- 消息列表 -->
+      <div ref="chatContainer" class="flex-1 overflow-y-auto px-4 py-6 scroll-smooth custom-scrollbar">
+        <!-- 空状态 -->
+        <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center max-w-3xl mx-auto w-full animate-in fade-in zoom-in duration-500">
+          <div class="text-center mb-10 space-y-4">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-900 shadow-xl shadow-gray-900/20 mb-4 transform hover:scale-105 transition-transform duration-300">
+              <Sparkles class="w-8 h-8 text-white" />
             </div>
+            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">
+              Phantom Flow<br/>
+              <span class="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">多源数据驱动的决策进化智能体</span>
+            </h1>
+            <p class="text-gray-500 max-w-lg mx-auto text-lg">
+              于金融幻海中捕捉瞬息，在数据流动间成就决策。
+            </p>
           </div>
-        </div>
 
-      </div>
-
-      <div class="p-4 border-t border-gray-200/50 space-y-3">
-        <div v-if="uploadedFiles.length > 0" class="flex flex-wrap gap-2">
-          <div v-for="(file, idx) in uploadedFiles" :key="idx" class="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs">
-            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            <span class="text-blue-700">{{ file.name }}</span>
-            <button @click="removeFile(idx)" class="text-blue-600 hover:text-blue-800">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
+          <div class="grid grid-cols-2 gap-4 w-full max-w-2xl px-4">
+            <button 
+              v-for="(question, idx) in exampleQuestions" 
+              :key="idx"
+              @click="sendMessage(question)"
+              class="group relative flex flex-col items-start p-5 bg-white border border-gray-200 rounded-2xl hover:border-violet-200 hover:shadow-lg hover:shadow-violet-500/5 transition-all duration-300 text-left overflow-hidden"
+            >
+              <div class="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 opacity-100 transition-opacity"></div>
+              <div class="absolute top-4 right-4 text-gray-300 group-hover:text-violet-500 transition-colors">
+                <ArrowUpRight class="w-5 h-5" />
+              </div>
+              <span class="text-2xl mb-3">{{ ['📊', '💰', '⚖️', '🌐'][idx] || '💡' }}</span>
+              <h3 class="font-semibold text-gray-900 mb-1 group-hover:text-violet-600 transition-colors">{{ question }}</h3>
+              <p class="text-xs text-gray-500 line-clamp-2">点击立即开始分析此话题...</p>
             </button>
           </div>
         </div>
-        
-        <div class="flex items-center space-x-2">
-          <select v-model="analysisStyle" class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400/50">
-            <option value="专业分析">专业分析</option>
-            <option value="简单分析(不含专业术语)">简单分析</option>
-          </select>
-          
-          <label class="cursor-pointer px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition text-sm flex items-center space-x-1" :class="{'opacity-50 cursor-not-allowed': isUploading}">
-            <div v-if="isUploading" class="flex items-center space-x-1">
-              <svg class="w-3 h-3 text-purple-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span class="text-gray-600">上传中...</span>
+
+        <!-- 消息流 -->
+        <div v-else class="max-w-3xl mx-auto w-full space-y-8 pb-4">
+          <div v-for="(message, index) in messages" :key="index" class="animate-in slide-in-from-bottom-2 duration-300">
+            <!-- System Message -->
+            <div v-if="message.role === 'system'" class="flex justify-center">
+              <span class="text-xs font-medium text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                {{ message.content }}
+              </span>
             </div>
-            <div v-else class="flex items-center space-x-1">
-              <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-              </svg>
-              <span class="text-gray-700">上传文件</span>
+
+            <!-- User Message -->
+            <div v-else-if="message.role === 'user'" class="flex justify-end">
+              <div class="bg-gray-900 text-white px-5 py-3.5 rounded-2xl rounded-tr-sm shadow-md max-w-[85%] text-sm leading-relaxed tracking-wide">
+                {{ message.content }}
+              </div>
             </div>
-            <input type="file" @change="handleFileUpload" accept=".pdf,.docx,.doc,.xls,.xlsx,.txt" class="hidden" :disabled="isUploading || isLoading" />
-          </label>
+
+            <!-- Assistant Message -->
+            <div v-else class="flex items-start gap-4 group">
+              <div class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center shrink-0 shadow-lg shadow-gray-900/10">
+                <Bot class="w-6 h-6 text-white" />
+              </div>
+              <div class="flex-1 min-w-0 space-y-2">
+                <div class="bg-white border border-gray-100 rounded-2xl rounded-tl-sm p-6 shadow-sm">
+                  <!-- AI Loading State -->
+                  <div v-if="!message.content && message.isLoading" class="flex items-center gap-2 text-gray-500">
+                    <Loader2 class="w-4 h-4 animate-spin" />
+                    <span class="text-sm font-medium">正在深度分析数据...</span>
+                  </div>
+                  
+                  <!-- AI Content -->
+                  <div v-else class="prose prose-sm max-w-none prose-p:text-gray-600 prose-headings:text-gray-900 prose-strong:text-gray-900 prose-code:text-violet-600 prose-pre:bg-gray-900 prose-pre:border-gray-800" v-html="formatMessage(message.content)"></div>
+
+                  <!-- Thinking Process -->
+                  <div v-if="message.thinking" class="mt-4 pt-4 border-t border-dashed border-gray-200">
+                    <div class="flex items-center gap-2 text-xs font-medium text-gray-500 mb-2">
+                      <BrainCircuit class="w-4 h-4" />
+                      <span>思维链推理</span>
+                    </div>
+                    <div class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg leading-relaxed font-mono">
+                      {{ message.thinking }}
+                    </div>
+                  </div>
+
+                  <!-- Sources -->
+                  <div v-if="message.sources && message.sources.length > 0" class="mt-4 pt-4 border-t border-gray-100">
+                    <div class="flex flex-wrap gap-2">
+                      <div v-for="(source, idx) in message.sources" :key="idx" 
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-700 text-xs rounded-md font-medium border border-violet-100 hover:bg-violet-100 transition-colors cursor-pointer"
+                      >
+                        <FileText class="w-3 h-3" />
+                        {{ source }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="flex items-center gap-2 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <button class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition" title="复制">
+                     <Copy class="w-4 h-4" />
+                   </button>
+                   <button class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition" title="重试">
+                     <RotateCw class="w-4 h-4" />
+                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <form @submit.prevent="handleSend" class="flex space-x-3">
-          <input
-            v-model="inputMessage"
-            type="text"
-            placeholder="输入您的问题，例如：分析比亚迪2023年财务状况..."
-            class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition text-sm"
-            :disabled="isLoading"
-          />
-          <button
-            type="submit"
-            :disabled="!inputMessage.trim() || isLoading"
-            class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium text-sm"
-          >
-            发送
-          </button>
-        </form>
-        <div class="flex items-center justify-between text-xs text-gray-500">
-          <span>支持上传PDF、Word、Excel等文件进行分析</span>
-          <span>{{ messages.length }} 条对话</span>
+      </div>
+
+      <!-- 底部输入区域 -->
+      <div class="p-6 bg-white shrink-0 relative z-20">
+        <div class="max-w-3xl mx-auto">
+          <!-- 文件上传提示 -->
+          <div v-if="uploadedFiles.length > 0" class="flex flex-wrap gap-2 mb-3 px-1">
+            <div v-for="(file, idx) in uploadedFiles" :key="idx" class="group flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium shadow-md shadow-gray-200 transition-all hover:pr-2">
+              <File class="w-3.5 h-3.5" />
+              <span class="max-w-[150px] truncate">{{ file.name }}</span>
+              <button @click="removeFile(idx)" class="text-gray-400 hover:text-white transition-colors ml-1">
+                <X class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div class="relative group">
+            <div class="absolute -inset-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl opacity-20 blur transition duration-500 group-hover:opacity-40"></div>
+            <form @submit.prevent="handleSend" class="relative bg-white rounded-xl shadow-xl shadow-gray-200/50 border border-gray-100 flex items-center p-2 gap-2 transition-all duration-300 ring-1 ring-transparent focus-within:ring-violet-500/20">
+              
+              <!-- 上传按钮 -->
+              <label 
+                class="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl cursor-pointer transition-colors relative group overflow-hidden"
+                :class="{'opacity-50 cursor-not-allowed': isUploading}"
+                title="上传文件"
+              >
+                <div class="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div v-if="isUploading" class="animate-spin">
+                  <Loader2 class="w-5 h-5" />
+                </div>
+                <Paperclip v-else class="w-5 h-5" />
+                <input type="file" @change="handleFileUpload" accept=".pdf,.docx,.doc,.xls,.xlsx,.txt" class="hidden" :disabled="isUploading || isLoading" />
+              </label>
+
+              <input
+                v-model="inputMessage"
+                type="text"
+                placeholder="询问任何关于企业财报、市场趋势的问题..."
+                class="flex-1 bg-transparent border-none focus:ring-0 text-gray-800 placeholder-gray-400 text-base h-12 px-2"
+                :disabled="isLoading"
+              />
+
+              <button
+                type="submit"
+                :disabled="!inputMessage.trim() || isLoading"
+                class="p-3 bg-gray-900 text-white rounded-xl hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-gray-900/20 active:scale-95 flex items-center gap-2 font-medium px-4 relative group overflow-hidden"
+              >
+                <div class="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <span v-if="!isLoading">发送</span>
+                <Send v-if="!isLoading" class="w-4 h-4" />
+                <Loader2 v-else class="w-5 h-5 animate-spin" />
+              </button>
+            </form>
+          </div>
+          <div class="text-center mt-3 text-xs text-gray-400 flex items-center justify-center gap-1.5">
+            <ShieldCheck class="w-3.5 h-3.5" />
+            <span>AI 生成内容仅供参考，请核对重要数据。</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="w-80 glass-panel p-4 space-y-4">
-      <div>
-        <h3 class="text-sm font-semibold text-gray-800 mb-3">快速操作</h3>
-        <div class="space-y-2">
-          <button class="w-full text-left px-3 py-2 bg-white/50 hover:bg-white/80 border border-gray-200 rounded-lg text-sm text-gray-700 transition flex items-center">
-            <svg class="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            生成分析报告
-          </button>
-          <button class="w-full text-left px-3 py-2 bg-white/50 hover:bg-white/80 border border-gray-200 rounded-lg text-sm text-gray-700 transition flex items-center">
-            <svg class="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            导出对话记录
-          </button>
-          <button class="w-full text-left px-3 py-2 bg-white/50 hover:bg-white/80 border border-gray-200 rounded-lg text-sm text-gray-700 transition flex items-center">
-            <svg class="w-4 h-4 mr-2 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            新建对话
-          </button>
-        </div>
+    <!-- Right Sidebar (History) -->
+    <div class="w-72 bg-white border-l border-gray-100 flex flex-col shrink-0 transition-all duration-300 z-20">
+      <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+        <span class="font-bold text-gray-900">会话历史</span>
+        <button @click="startNewConversation" class="p-2 hover:bg-gray-50 rounded-lg text-gray-500 hover:text-gray-900 transition-colors relative group overflow-hidden" title="新建对话">
+          <div class="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <SquarePen class="w-5 h-5" />
+        </button>
       </div>
 
-      <div>
-        <h3 class="text-sm font-semibold text-gray-800 mb-3">历史会话</h3>
-        <div class="space-y-2 max-h-96 overflow-y-auto">
-          <button 
-            v-for="session in historySessions" 
-            :key="session.id"
-            class="w-full text-left px-3 py-2 bg-white/50 hover:bg-white/80 border border-gray-200 rounded-lg text-xs text-gray-700 transition"
-          >
-            <div class="font-medium truncate">{{ session.title }}</div>
-            <div class="text-gray-500 mt-1">{{ session.time }}</div>
-          </button>
-        </div>
-      </div>
-
-      <div class="p-3 bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
-        <div class="flex items-start space-x-2">
-          <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <div class="text-xs text-gray-700">
-            <div class="font-medium mb-1">提示</div>
-            <div>您可以询问企业财务指标、行业对比、风险评估等问题，系统会自动调用相关数据源进行分析。</div>
-          </div>
+      <div class="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
+        <div class="text-xs font-medium text-gray-400 px-3 py-2">近期对话</div>
+        <button
+          v-for="session in historySessions"
+          :key="session.id"
+          @click="loadConversation(session.id)"
+          :class="cn(
+            'w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group relative overflow-hidden',
+            currentConversationId === session.id 
+              ? 'bg-gray-100 text-gray-900 font-medium' 
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          )"
+        >
+          <div class="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <MessageSquare class="w-4 h-4 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+          <div class="truncate flex-1">{{ session.title }}</div>
+          <span class="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">{{ session.time }}</span>
+        </button>
+        
+        <div v-if="historySessions.length === 0" class="flex flex-col items-center justify-center py-10 text-gray-400 gap-2">
+          <History class="w-8 h-8 opacity-20" />
+          <span class="text-xs">暂无历史记录</span>
         </div>
       </div>
     </div>
@@ -217,9 +238,32 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, defineEmits } from 'vue'
 import axios from 'axios'
 import { marked } from 'marked'
+import { clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+import { 
+  Sparkles, 
+  SquarePen, 
+  MessageSquare, 
+  History, 
+  Bot, 
+  ArrowUpRight, 
+  Loader2, 
+  BrainCircuit, 
+  FileText, 
+  Copy, 
+  RotateCw, 
+  File, 
+  X, 
+  Paperclip, 
+  Send,
+  ShieldCheck
+} from 'lucide-vue-next'
+
+const cn = (...inputs) => twMerge(clsx(inputs))
+const emit = defineEmits(['logout'])
 
 const messages = ref([])
 const inputMessage = ref('')
@@ -228,22 +272,86 @@ const isUploading = ref(false)
 const chatContainer = ref(null)
 const uploadedFiles = ref([])
 const analysisStyle = ref('专业分析')
+const currentConversationId = ref(null)
+const currentUserMessage = ref('')
+const currentAssistantResponse = ref('')
 
 const exampleQuestions = [
-  '分析比亚迪2023年的财务状况',
-  '对比宁德时代和比亚迪的盈利能力',
+  '分析比亚迪2023年财务状况',
+  '对比宁德时代和比亚迪',
   '评估特斯拉的经营风险',
-  '追踪新能源汽车行业的最新舆情'
+  '追踪新能源汽车行业舆情'
 ]
 
-const historySessions = ref([
-  { id: 1, title: '比亚迪财务分析', time: '2小时前' },
-  { id: 2, title: '新能源行业对比', time: '昨天' },
-  { id: 3, title: '特斯拉风险评估', time: '3天前' }
-])
+const historySessions = ref([])
+
+// 加载聊天历史列表
+const loadChatHistory = async () => {
+  try {
+    const token = localStorage.getItem('access_token')
+    if (!token) return
+    const response = await axios.get('http://localhost:8000/api/chat/history', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    historySessions.value = response.data.history.map(h => ({
+      id: h.conversation_id,
+      title: h.title,
+      time: formatTime(h.updated_at)
+    }))
+  } catch (error) {
+    console.error('加载历史记录失败:', error)
+  }
+}
+
+// 格式化时间
+const formatTime = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now - date
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  
+  if (hours < 1) return '刚刚'
+  if (hours < 24) return `${hours}小时前`
+  if (days < 7) return `${days}天前`
+  return date.toLocaleDateString()
+}
+
+// 加载特定会话的消息
+const loadConversation = async (conversationId) => {
+  try {
+    const token = localStorage.getItem('access_token')
+    const response = await axios.get(`http://localhost:8000/api/chat/history/${conversationId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    messages.value = response.data.messages
+    currentConversationId.value = conversationId
+    scrollToBottom()
+  } catch (error) {
+    console.error('加载会话失败:', error)
+  }
+}
+
+// 保存聊天记录
+const saveChatHistory = async (conversationId, userMsg, assistantMsg) => {
+  try {
+    const token = localStorage.getItem('access_token')
+    await axios.post('http://localhost:8000/api/chat/save', {
+      conversation_id: conversationId,
+      message: userMsg,
+      response: assistantMsg
+    }, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    // 重新加载历史列表
+    await loadChatHistory()
+  } catch (error) {
+    console.error('保存聊天记录失败:', error)
+  }
+}
 
 const formatMessage = (content) => {
-  // 使用marked渲染Markdown
   try {
     return marked.parse(content)
   } catch (error) {
@@ -327,12 +435,12 @@ const handleSend = async () => {
 
   messages.value.push(userMessage)
   const question = inputMessage.value
+  currentUserMessage.value = question
   inputMessage.value = ''
   scrollToBottom()
 
   isLoading.value = true
 
-  // 创建一个空的assistant消息用于流式更新
   const assistantMessage = {
     role: 'assistant',
     content: '',
@@ -356,7 +464,10 @@ const handleSend = async () => {
       payload.files = uploadedFiles.value
     }
     
-    // 使用fetch进行流式请求
+    if (currentConversationId.value) {
+      payload.conversation_id = currentConversationId.value
+    }
+    
     const response = await fetch('http://localhost:8000/api/chat', {
       method: 'POST',
       headers: {
@@ -365,6 +476,11 @@ const handleSend = async () => {
       },
       body: JSON.stringify(payload)
     })
+    
+    const conversationId = response.headers.get('X-Conversation-ID')
+    if (conversationId && !currentConversationId.value) {
+      currentConversationId.value = conversationId
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
@@ -373,6 +489,7 @@ const handleSend = async () => {
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
+    currentAssistantResponse.value = ''
 
     while (true) {
       const { done, value } = await reader.read()
@@ -395,20 +512,20 @@ const handleSend = async () => {
             const parsed = JSON.parse(data)
             
             if (parsed.type === 'text') {
-              // 追加文本块
               messages.value[messageIndex].isLoading = false
               messages.value[messageIndex].content += parsed.text
-              // 只有用户在底部时才自动滚动
+              currentAssistantResponse.value += parsed.text
               if (isUserAtBottom()) {
                 scrollToBottom()
               }
             } else if (parsed.type === 'finish') {
-              // 工作流完成,提取额外信息
+              if (currentConversationId.value && currentUserMessage.value && currentAssistantResponse.value) {
+                saveChatHistory(currentConversationId.value, currentUserMessage.value, currentAssistantResponse.value)
+              }
               const finishData = parsed.data?.data || {}
               messages.value[messageIndex].workflowRunId = finishData.workflow_run_id
               messages.value[messageIndex].elapsedTime = finishData.elapsed_time
               
-              // 提取outputs中的thinking和sources
               const outputs = finishData.outputs || {}
               if (outputs.thinking) {
                 messages.value[messageIndex].thinking = outputs.thinking
@@ -436,123 +553,32 @@ const handleSend = async () => {
   }
 }
 
+const startNewConversation = () => {
+  messages.value = []
+  currentConversationId.value = null
+  currentUserMessage.value = ''
+  currentAssistantResponse.value = ''
+  uploadedFiles.value = []
+}
+
 onMounted(() => {
   scrollToBottom()
+  loadChatHistory()
 })
 </script>
 
 <style scoped>
-/* Markdown渲染样式 */
-:deep(.text-sm) h1,
-:deep(.text-sm) h2,
-:deep(.text-sm) h3 {
-  font-weight: 600;
-  margin-top: 0.4em;
-  margin-bottom: 0.2em;
-  color: #1f2937;
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
 }
-
-:deep(.text-sm) h1 {
-  font-size: 1.5em;
-  border-bottom: 2px solid #e5e7eb;
-  padding-bottom: 0.3em;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
 }
-
-:deep(.text-sm) h2 {
-  font-size: 1.3em;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 4px;
 }
-
-:deep(.text-sm) h3 {
-  font-size: 1.1em;
-}
-
-:deep(.text-sm) p {
-  margin-bottom: 0.25em;
-  line-height: 1.4;
-}
-
-:deep(.text-sm) code {
-  background-color: #f3f4f6;
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.9em;
-  color: #dc2626;
-}
-
-:deep(.text-sm) pre {
-  background-color: #1f2937;
-  color: #f9fafb;
-  padding: 0.5em;
-  border-radius: 6px;
-  overflow-x: auto;
-  margin: 0.3em 0;
-}
-
-:deep(.text-sm) pre code {
-  background-color: transparent;
-  padding: 0;
-  color: #f9fafb;
-}
-
-:deep(.text-sm) ul,
-:deep(.text-sm) ol {
-  margin-left: 1.5em;
-  margin-bottom: 0.25em;
-}
-
-:deep(.text-sm) li {
-  margin-bottom: 0.1em;
-  line-height: 1.4;
-}
-
-:deep(.text-sm) blockquote {
-  border-left: 4px solid #8b5cf6;
-  padding-left: 1em;
-  margin: 0.3em 0;
-  color: #6b7280;
-  font-style: italic;
-}
-
-:deep(.text-sm) table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0.3em 0;
-}
-
-:deep(.text-sm) th,
-:deep(.text-sm) td {
-  border: 1px solid #e5e7eb;
-  padding: 0.5em;
-  text-align: left;
-}
-
-:deep(.text-sm) th {
-  background-color: #f3f4f6;
-  font-weight: 600;
-}
-
-:deep(.text-sm) a {
-  color: #8b5cf6;
-  text-decoration: underline;
-}
-
-:deep(.text-sm) a:hover {
-  color: #7c3aed;
-}
-
-:deep(.text-sm) strong {
-  font-weight: 600;
-  color: #111827;
-}
-
-:deep(.text-sm) em {
-  font-style: italic;
-}
-
-:deep(.text-sm) hr {
-  border: none;
-  border-top: 2px solid #e5e7eb;
-  margin: 0.4em 0;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
 }
 </style>
